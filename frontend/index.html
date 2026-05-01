@@ -847,7 +847,16 @@
     </footer>
     
     <script>
-        const API_URL = 'http://localhost:5000/api';
+        const API_URL = 'https://creo-project.onrender.com/api';
+
+// Example for sending a contact message
+const sendMessage = async (formData) => {
+  const response = await fetch(`${API_URL}/contacts`, {  // Uses the variable
+    method: 'POST',
+    body: JSON.stringify(formData)
+});
+return response.json();
+};
     
         // Contact Form Logic
         document.getElementById('contactForm').addEventListener('submit', async (e) => {
