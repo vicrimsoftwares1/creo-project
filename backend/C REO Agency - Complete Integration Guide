@@ -1,0 +1,1955 @@
+# C REO Marketing Agency - Complete Integration Guide
+
+## 📋 Table of Contents
+1. [Project Overview](#project-overview)
+2. [Project Structure](#project-structure)
+3. [Backend Setup](#backend-setup)
+4. [Frontend Setup](#frontend-setup)
+5. [Integration Steps](#integration-steps)
+6. [Code Explanation](#code-explanation)
+7. [API Endpoints Reference](#api-endpoints-reference)
+8. [Testing Guide](#testing-guide)
+9. [Deployment](#deployment)
+10. [Troubleshooting](#troubleshooting)
+
+---
+
+## 📁 Project Overview
+
+This is a full-stack marketing agency website with:
+- **Frontend**: Modern, animated HTML/CSS/JavaScript website
+- **Backend**: Node.js/Express REST API with MongoDB
+- **Features**: Contact forms, portfolio management, newsletter, admin panel, file uploads, email notifications
+
+---
+
+## 🏗️ Project Structure
+
+```
+creo-agency/
+│
+├── backend/                    # Backend API Server
+│   ├── server.js              # Main server file (ALL backend logic)
+│   ├── package.json           # Backend dependencies
+│   ├── .env                   # Environment variables (create this)
+│   ├── .env.example           # Environment template
+│   ├── .gitignore            # Git ignore rules
+│   ├── uploads/              # File upload directory
+│   │   ├── images/           # Portfolio images
+│   │   └── pdfs/             # Portfolio PDF files
+│   └── scripts/
+│       └── seed.js           # Database seeding script
+│
+├── frontend/                  # Frontend Website
+│   ├── index.html            # Main website file
+│   ├── css/
+│   │   └── styles.css        # (Optional: extracted styles)
+│   ├── js/
+│   │   └── main.js           # Frontend API integration
+│   └── assets/               # Images, fonts, etc.
+│
+└── README.md                 # This file
+```
+
+---
+
+## 🔧 Backend Setup
+
+### Step 1: Create Backend Directory
+
+```bash
+mkdir creo-agency
+cd creo-agency
+mkdir backend
+cd backend
+```
+
+### Step 2: Initialize Node.js Project
+
+```bash
+npm init -y
+```
+
+### Step 3: Install Dependencies
+
+```bash
+npm install express mongoose cors multer nodemailer jsonwebtoken bcryptjs dotenv
+npm install --save-dev nodemon
+```
+
+**Dependencies Explanation:**
+- `express`: Web framework for building the API
+- `mongoose`: MongoDB object modeling tool
+- `cors`: Enable Cross-Origin Resource Sharing
+- `multer`: Handle file uploads (images, PDFs)
+- `nodemailer`: Send emails (confirmations, notifications)
+- `jsonwebtoken`: Create and verify JWT tokens for authentication
+- `bcryptjs`: Hash passwords securely
+- `dotenv`: Load environment variables from .env file
+- `nodemon`: Auto-restart server during development
+
+### Step 4: Create server.js
+
+Copy the backend code from the first artifact into `server.js`
+
+### Step 5: Create .env File
+
+Create `.env` file in backend directory:
+
+```env
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
+
+# Database Configuration
+MONGODB_URI=mongodb://localhost:27017/creo_agency
+
+# JWT Secret (Generate a random string)
+JWT_SECRET=your-super-secret-jwt-key-change-this
+
+# Email Configuration (Gmail Example)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-gmail-app-password
+SMTP_FROM="C REO Agency" <noreply@creoagency.com>
+
+# Admin Email
+ADMIN_EMAIL=admin@creoagency.com
+```
+
+**Gmail App Password Setup:**
+1. Go to Google Account Settings
+2. Enable 2-Factor Authentication
+3. Generate App Password (Security → App Passwords)
+4. Use generated password in SMTP_PASS
+
+### Step 6: Update package.json Scripts
+
+```json
+{
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  }
+}
+```
+
+### Step 7: Create Upload Directories
+
+```bash
+mkdir -p uploads/images uploads/pdfs
+```
+
+### Step 8: Start MongoDB
+
+**Option A - Local MongoDB:**
+```bash
+mongod
+```
+
+**Option B - MongoDB Atlas (Cloud):**
+1. Go to mongodb.com/cloud/atlas
+2. Create free cluster
+3. Get connection string
+4. Update MONGODB_URI in .env
+
+### Step 9: Start Backend Server
+
+```bash
+npm run dev
+```
+
+You should see:
+```
+✅ MongoDB Connected
+╔═══════════════════════════════════════════╗
+║   C REO AGENCY - BACKEND API SERVER      ║
+║   Status: Running ✅                      ║
+║   Port: 5000                             ║
+╚═══════════════════════════════════════════╝
+```
+
+### Step 10: Create Admin Account
+
+```bash
+curl -X POST http://localhost:5000/api/admin/setup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "email": "admin@creoagency.com",
+    "password": "Admin@123"
+  }'
+```
+
+---
+
+## 🎨 Frontend Setup
+
+### Step 1: Create Frontend Directory
+
+```bash
+cd ..
+mkdir frontend
+cd frontend
+```
+
+### Step 2: Create index.html
+
+Copy your original HTML file and save as `index.html`
+
+### Step 3: Create JavaScript Integration File
+
+Create `js/main.js`:
+
+```javascript
+// API Configuration
+const API_BASE_URL = 'http://localhost:5000/api';
+
+// ============================================
+// CONTACT FORM HANDLER
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Get all CTA buttons that should open contact modal
+    const ctaButtons = document.querySelectorAll('.cta-button, .cta-white');
+    const contactSection = document.getElementById('contact');
+    
+    // Handle contact form submission
+    const handleContactFormSubmit = async (formData) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/contact`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert('✅ Thank you! We will contact you soon.');
+                return true;
+            } else {
+                alert('❌ Error: ' + (data.error || 'Failed to submit form'));
+                return false;
+            }
+        } catch (error) {
+            console.error('Contact form error:', error);
+            alert('❌ Network error. Please try again.');
+            return false;
+        }
+    };
+
+    // Add click handler to CTA buttons to scroll to contact
+    ctaButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            contactSection.scrollIntoView({ behavior: 'smooth' });
+            // Optional: Open a modal here
+        });
+    });
+
+    // ============================================
+    // NEWSLETTER SUBSCRIPTION
+    // ============================================
+    const handleNewsletterSubmit = async (email, name = '') => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/newsletter/subscribe`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, name })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert('✅ Successfully subscribed to newsletter!');
+                return true;
+            } else {
+                alert('❌ ' + (data.error || 'Failed to subscribe'));
+                return false;
+            }
+        } catch (error) {
+            console.error('Newsletter error:', error);
+            alert('❌ Network error. Please try again.');
+            return false;
+        }
+    };
+
+    // ============================================
+    // LOAD PORTFOLIO ITEMS
+    // ============================================
+    const loadPortfolio = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/portfolio/featured`);
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                displayPortfolio(data.data);
+            }
+        } catch (error) {
+            console.error('Portfolio load error:', error);
+        }
+    };
+
+    const displayPortfolio = (portfolioItems) => {
+        const portfolioGrid = document.querySelector('.portfolio-grid');
+        
+        if (!portfolioGrid || portfolioItems.length === 0) return;
+
+        portfolioGrid.innerHTML = portfolioItems.map(item => `
+            <div class="portfolio-item" style="background-image: url('${API_BASE_URL.replace('/api', '')}${item.images[0] || ''}')">
+                <div class="portfolio-content">
+                    <h3>${item.title}</h3>
+                    <p>${item.description}</p>
+                    ${item.pdfFile ? `<a href="${API_BASE_URL.replace('/api', '')}${item.pdfFile}" target="_blank">View Portfolio</a>` : ''}
+                </div>
+            </div>
+        `).join('');
+    };
+
+    // ============================================
+    // LOAD TESTIMONIALS
+    // ============================================
+    const loadTestimonials = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/testimonials?featured=true`);
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                displayTestimonials(data.data);
+            }
+        } catch (error) {
+            console.error('Testimonials load error:', error);
+        }
+    };
+
+    const displayTestimonials = (testimonials) => {
+        const testimonialSlider = document.querySelector('.testimonial-slider');
+        
+        if (!testimonialSlider || testimonials.length === 0) return;
+
+        // Display first testimonial (you can add slider logic here)
+        const testimonial = testimonials[0];
+        testimonialSlider.innerHTML = `
+            <div class="testimonial">
+                <p>"${testimonial.content}"</p>
+                <div class="testimonial-author">${testimonial.name}</div>
+                <div class="testimonial-role">${testimonial.role}${testimonial.company ? ', ' + testimonial.company : ''}</div>
+            </div>
+        `;
+    };
+
+    // ============================================
+    // ANALYTICS TRACKING
+    // ============================================
+    const trackEvent = async (event, metadata = {}) => {
+        try {
+            await fetch(`${API_BASE_URL}/analytics/track`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    event,
+                    page: window.location.pathname,
+                    sessionId: getSessionId(),
+                    metadata
+                })
+            });
+        } catch (error) {
+            console.error('Analytics error:', error);
+        }
+    };
+
+    const getSessionId = () => {
+        let sessionId = sessionStorage.getItem('sessionId');
+        if (!sessionId) {
+            sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            sessionStorage.setItem('sessionId', sessionId);
+        }
+        return sessionId;
+    };
+
+    // Track page view
+    trackEvent('page_view');
+
+    // Track button clicks
+    document.querySelectorAll('.cta-button, .secondary-button').forEach(button => {
+        button.addEventListener('click', () => {
+            trackEvent('button_click', { button: button.textContent });
+        });
+    });
+
+    // ============================================
+    // INITIALIZE
+    // ============================================
+    loadPortfolio();
+    loadTestimonials();
+});
+```
+
+### Step 4: Update index.html
+
+Add this before closing `</body>` tag:
+
+```html
+<!-- API Integration Script -->
+<script src="js/main.js"></script>
+```
+
+### Step 5: Add Contact Form Modal
+
+Add this HTML before closing `</body>` tag:
+
+```html
+<!-- Contact Form Modal -->
+<div id="contactModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Get Your Free Strategy Session</h2>
+        <form id="contactForm">
+            <input type="text" name="name" placeholder="Your Name *" required>
+            <input type="email" name="email" placeholder="Your Email *" required>
+            <input type="tel" name="phone" placeholder="Phone Number">
+            <input type="text" name="company" placeholder="Company Name">
+            
+            <select name="service">
+                <option value="">Select Service</option>
+                <option value="Social Media Marketing">Social Media Marketing</option>
+                <option value="Photography">Photography</option>
+                <option value="SEO & Analytics">SEO & Analytics</option>
+                <option value="Content Strategy">Content Strategy</option>
+                <option value="PPC Advertising">PPC Advertising</option>
+                <option value="Email Marketing">Email Marketing</option>
+                <option value="Brand Development">Brand Development</option>
+            </select>
+
+            <select name="budget">
+                <option value="">Select Budget Range</option>
+                <option value="<$5000">Less than $5,000</option>
+                <option value="$5000-$10000">$5,000 - $10,000</option>
+                <option value="$10000-$25000">$10,000 - $25,000</option>
+                <option value="$25000-$50000">$25,000 - $50,000</option>
+                <option value="$50000+">$50,000+</option>
+            </select>
+
+            <textarea name="message" placeholder="Tell us about your project *" rows="5" required></textarea>
+            
+            <button type="submit" class="cta-button">Submit Request</button>
+        </form>
+    </div>
+</div>
+
+<style>
+.modal {
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: #1a1a1a;
+    padding: 3rem;
+    border-radius: 20px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    right: 1.5rem;
+    top: 1.5rem;
+    font-size: 2rem;
+    cursor: pointer;
+    color: #fff;
+}
+
+.modal-content h2 {
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, #D4A017 0%, #8B4513 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+    width: 100%;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: #0f0f0f;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 1rem;
+}
+
+.modal-content input:focus,
+.modal-content select:focus,
+.modal-content textarea:focus {
+    outline: none;
+    border-color: #D4A017;
+}
+
+.modal-content button {
+    width: 100%;
+    margin-top: 1rem;
+}
+</style>
+
+<script>
+// Modal functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('contactModal');
+    const closeBtn = document.querySelector('.close');
+    const contactForm = document.getElementById('contactForm');
+
+    // Open modal when CTA buttons are clicked
+    document.querySelectorAll('.cta-button, .cta-white').forEach(button => {
+        button.addEventListener('click', (e) => {
+            if (!button.getAttribute('href') || button.getAttribute('href') === '#contact') {
+                e.preventDefault();
+                modal.style.display = 'flex';
+            }
+        });
+    });
+
+    // Close modal
+    closeBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+
+    window.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+
+    // Handle form submission
+    contactForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            name: contactForm.name.value,
+            email: contactForm.email.value,
+            phone: contactForm.phone.value,
+            company: contactForm.company.value,
+            service: contactForm.service.value,
+            budget: contactForm.budget.value,
+            message: contactForm.message.value
+        };
+
+        const submitButton = contactForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Submitting...';
+
+        try {
+            const response = await fetch('http://localhost:5000/api/contact', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert('✅ Thank you! We will contact you within 24 hours.');
+                contactForm.reset();
+                modal.style.display = 'none';
+            } else {
+                alert('❌ ' + (data.error || 'Failed to submit form'));
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            alert('❌ Network error. Please try again.');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Submit Request';
+        }
+    });
+});
+</script>
+```
+
+### Step 6: Serve Frontend
+
+**Option A - Simple HTTP Server (Python):**
+```bash
+# Python 3
+python -m http.server 3000
+
+# Python 2
+python -m SimpleHTTPServer 3000
+```
+
+**Option B - Live Server (VS Code Extension):**
+1. Install "Live Server" extension
+2. Right-click index.html
+3. Select "Open with Live Server"
+
+**Option C - Node.js http-server:**
+```bash
+npm install -g http-server
+http-server -p 3000
+```
+
+Visit: `http://localhost:3000`
+
+---
+
+## 🔗 Integration Steps
+
+### 1. CORS Configuration
+
+The backend already has CORS enabled in `server.js`:
+
+```javascript
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
+```
+
+### 2. Test Contact Form
+
+1. Click "Get Started" button
+2. Fill out the form
+3. Submit
+4. Check:
+   - Browser console for logs
+   - Backend terminal for request
+   - Your email for confirmation
+   - Admin email for notification
+
+### 3. Test Portfolio Loading
+
+1. Create portfolio items via API or admin panel
+2. Refresh frontend
+3. Portfolio should auto-load from backend
+
+### 4. Test Newsletter
+
+Add newsletter form to footer:
+
+```html
+<form id="newsletterForm" style="margin-top: 1rem;">
+    <input type="email" id="newsletterEmail" placeholder="Your email" 
+           style="padding: 0.8rem; border-radius: 5px; border: 1px solid #2a2a2a; background: #0f0f0f; color: #fff;">
+    <button type="submit" class="cta-button" style="margin-left: 0.5rem;">Subscribe</button>
+</form>
+
+<script>
+document.getElementById('newsletterForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('newsletterEmail').value;
+    
+    try {
+        const response = await fetch('http://localhost:5000/api/newsletter/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('✅ Subscribed successfully!');
+            e.target.reset();
+        } else {
+            alert('❌ ' + data.error);
+        }
+    } catch (error) {
+        alert('❌ Network error');
+    }
+});
+</script>
+```
+
+---
+
+## 📚 Code Explanation
+
+### Backend Code Walkthrough
+
+#### 1. **Server Setup (Lines 1-30)**
+
+```javascript
+const express = require('express');
+const app = express();
+```
+- Creates Express application
+- Express is the web framework that handles HTTP requests
+
+#### 2. **Middleware (Lines 32-38)**
+
+```javascript
+app.use(cors());
+app.use(express.json());
+app.use('/uploads', express.static('uploads'));
+```
+- **cors()**: Allows frontend to make requests from different origin
+- **express.json()**: Parses JSON request bodies
+- **express.static()**: Serves uploaded files publicly
+
+#### 3. **Database Connection (Lines 40-50)**
+
+```javascript
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ MongoDB Connected'))
+  .catch(err => console.error('❌ Error:', err));
+```
+- Connects to MongoDB database
+- Uses Mongoose ORM for easier database operations
+
+#### 4. **Database Schemas (Lines 52-200)**
+
+```javascript
+const contactSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  // ...
+});
+
+const Contact = mongoose.model('Contact', contactSchema);
+```
+- **Schema**: Defines structure of data (like a blueprint)
+- **Model**: Provides interface to interact with database
+- Each schema represents a database collection (table)
+
+**Key Schemas:**
+- **Contact**: Stores contact form submissions
+- **Newsletter**: Stores email subscribers
+- **Portfolio**: Stores project showcases
+- **Testimonial**: Stores client reviews
+- **ServiceInquiry**: Stores detailed service requests
+- **Admin**: Stores admin user accounts
+- **Analytics**: Stores user activity tracking
+
+#### 5. **File Upload Configuration (Lines 202-240)**
+
+```javascript
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/images');
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = Date.now() + '-' + file.originalname;
+    cb(null, uniqueName);
+  }
+});
+```
+- **Multer**: Middleware for handling file uploads
+- **storage**: Configures where and how to save files
+- **fileFilter**: Validates file types (images, PDFs only)
+
+#### 6. **Email Configuration (Lines 242-280)**
+
+```javascript
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+```
+- **Nodemailer**: Library for sending emails
+- **transporter**: Configured email service
+- **emailTemplates**: HTML email templates for different purposes
+
+#### 7. **Authentication Middleware (Lines 282-310)**
+
+```javascript
+const authenticateToken = (req, res, next) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  
+  if (!token) return res.status(401).json({ error: 'No token' });
+  
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid token' });
+    req.user = user;
+    next();
+  });
+};
+```
+- **JWT (JSON Web Token)**: Secure way to authenticate users
+- **authenticateToken**: Middleware that checks if user is logged in
+- **authorizeRole**: Checks if user has permission for action
+
+#### 8. **Public API Routes (Lines 312-600)**
+
+**Contact Form Endpoint:**
+```javascript
+app.post('/api/contact', async (req, res) => {
+  // 1. Extract data from request
+  const { name, email, message } = req.body;
+  
+  // 2. Validate required fields
+  if (!name || !email || !message) {
+    return res.status(400).json({ error: 'Required fields missing' });
+  }
+  
+  // 3. Save to database
+  const contact = new Contact({ name, email, message });
+  await contact.save();
+  
+  // 4. Send confirmation email
+  await transporter.sendMail({
+    to: email,
+    subject: 'Thank you for contacting us',
+    html: emailTemplates.contactConfirmation(name)
+  });
+  
+  // 5. Return success response
+  res.status(201).json({ success: true });
+});
+```
+
+**How it works:**
+1. Client sends POST request with form data
+2. Server validates the data
+3. Saves to MongoDB database
+4. Sends email confirmation
+5. Sends email to admin
+6. Returns success response to client
+
+**Newsletter Endpoint:**
+```javascript
+app.post('/api/newsletter/subscribe', async (req, res) => {
+  const { email } = req.body;
+  
+  // Check if already subscribed
+  const existing = await Newsletter.findOne({ email });
+  if (existing) {
+    return res.status(400).json({ error: 'Already subscribed' });
+  }
+  
+  // Create new subscriber
+  const subscriber = new Newsletter({ email });
+  await subscriber.save();
+  
+  res.json({ success: true });
+});
+```
+
+**Portfolio Endpoints:**
+```javascript
+// Get all portfolio items
+app.get('/api/portfolio', async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 12;
+  const skip = (page - 1) * limit;
+  
+  const items = await Portfolio.find()
+    .sort({ publishedAt: -1 })
+    .skip(skip)
+    .limit(limit);
+  
+  res.json({ success: true, data: items });
+});
+
+// Get featured portfolio items
+app.get('/api/portfolio/featured', async (req, res) => {
+  const items = await Portfolio.find({ featured: true });
+  res.json({ success: true, data: items });
+});
+```
+
+#### 9. **Admin Authentication (Lines 602-700)**
+
+**Login Endpoint:**
+```javascript
+app.post('/api/admin/login', async (req, res) => {
+  const { username, password } = req.body;
+  
+  // 1. Find admin user
+  const admin = await Admin.findOne({ username });
+  if (!admin) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  
+  // 2. Verify password
+  const isValid = await bcrypt.compare(password, admin.password);
+  if (!isValid) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  
+  // 3. Generate JWT token
+  const token = jwt.sign(
+    { id: admin._id, role: admin.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+  
+  // 4. Return token
+  res.json({ success: true, token });
+});
+```
+
+**Setup First Admin:**
+```javascript
+app.post('/api/admin/setup', async (req, res) => {
+  // Check if admin already exists
+  const existing = await Admin.findOne();
+  if (existing) {
+    return res.status(400).json({ error: 'Admin exists' });
+  }
+  
+  // Hash password
+  const hashedPassword = await bcrypt.hash(req.body.password, 10);
+  
+  // Create admin
+  const admin = new Admin({
+    username: req.body.username,
+    email: req.body.email,
+    password: hashedPassword,
+    role: 'admin'
+  });
+  
+  await admin.save();
+  res.json({ success: true });
+});
+```
+
+#### 10. **Protected Admin Routes (Lines 702-1000)**
+
+**Get All Contacts:**
+```javascript
+app.get('/api/admin/contacts', 
+  authenticateToken,                    // Must be logged in
+  authorizeRole('admin', 'editor'),    // Must have permission
+  async (req, res) => {
+    const contacts = await Contact.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: contacts });
+  }
+);
+```
+
+**Create Portfolio Item:**
+```javascript
+app.post('/api/admin/portfolio',
+  authenticateToken,
+  authorizeRole('admin', 'editor'),
+  upload.fields([
+    { name: 'images', maxCount: 5 },
+    { name: 'pdf', maxCount: 1 }
+  ]),
+  async (req, res) => {
+    // Get uploaded file paths
+    const images = req.files['images']?.map(f => '/uploads/images/' + f.filename);
+    const pdfFile = req.files['pdf']?.[0] ? '/uploads/pdfs/' + req.files['pdf'][0].filename : null;
+    
+    // Create portfolio item
+    const portfolio = new Portfolio({
+      title: req.body.title,
+      description: req.body.description,
+      images,
+      pdfFile
+    });
+    
+    await portfolio.save();
+    res.json({ success: true, data: portfolio });
+  }
+);
+```
+
+**Analytics Dashboard:**
+```javascript
+app.get('/api/admin/analytics/dashboard',
+  authenticateToken,
+  async (req, res) => {
+    // Aggregate statistics
+    const totalContacts = await Contact.countDocuments();
+    const totalSubscribers = await Newsletter.countDocuments();
+    const recentContacts = await Contact.find().sort({ createdAt: -1 }).limit(5);
+    
+    // Get contacts by status
+    const byStatus = await Contact.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+    
+    res.json({
+      success: true,
+      data: {
+        totalContacts,
+        totalSubscribers,
+        recentContacts,
+        byStatus
+      }
+    });
+  }
+);
+```
+
+#### 11. **Error Handling (Lines 1000-1050)**
+
+```javascript
+// 404 Handler - Route not found
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+```
+
+#### 12. **Server Start (Lines 1052-1080)**
+
+```javascript
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  await mongoose.connection.close();
+  process.exit(0);
+});
+```
+
+### Frontend Code Walkthrough
+
+#### 1. **HTML Structure**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C REO - Marketing Agency</title>
+</head>
+<body>
+    <!-- Navigation -->
+    <!-- Hero Section -->
+    <!-- Services Section -->
+    <!-- Portfolio Section -->
+    <!-- Contact Section -->
+    <!-- Footer -->
+</body>
+</html>
+```
+
+**Key Components:**
+- **Navigation**: Fixed menu bar with links
+- **Hero**: Full-screen introduction with CTA buttons
+- **Services**: Grid of service cards
+- **Portfolio**: Project showcase grid
+- **Testimonials**: Client feedback
+- **Contact**: Form and CTA section
+- **Footer**: Links and contact information
+
+#### 2. **CSS Styling (Lines 10-600)**
+
+**Animation System:**
+```css
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-30px); }
+}
+```
+
+**Gradient Effects:**
+```css
+.gradient-text {
+    background: linear-gradient(135deg, #8B4513 0%, #D4A017 50%, #FFD700 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+```
+
+**Responsive Design:**
+```css
+@media (max-width: 768px) {
+    .hero h1 {
+        font-size: 2.5rem;  /* Smaller on mobile */
+    }
+    .nav-links {
+        display: none;  /* Hide menu, show hamburger */
+    }
+}
+```
+
+#### 3. **JavaScript Integration (main.js)**
+
+**API Configuration:**
+```javascript
+const API_BASE_URL = 'http://localhost:5000/api';
+```
+- Central configuration for all API calls
+- Easy to change for production
+
+**Contact Form Handler:**
+```javascript
+const handleContactFormSubmit = async (formData) => {
+    try {
+        // 1. Send POST request to backend
+        const response = await fetch(`${API_BASE_URL}/contact`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+
+        // 2. Parse JSON response
+        const data = await response.json();
+
+        // 3. Check if successful
+        if (response.ok) {
+            alert('✅ Thank you! We will contact you soon.');
+            return true;
+        } else {
+            alert('❌ Error: ' + data.error);
+            return false;
+        }
+    } catch (error) {
+        // 4. Handle network errors
+        console.error('Contact form error:', error);
+        alert('❌ Network error. Please try again.');
+        return false;
+    }
+};
+```
+
+**How it works:**
+1. User fills form and clicks submit
+2. JavaScript captures form data
+3. Sends HTTP POST request to backend
+4. Backend processes and saves to database
+5. Backend sends response back
+6. Frontend shows success/error message
+
+**Portfolio Loading:**
+```javascript
+const loadPortfolio = async () => {
+    try {
+        // 1. Fetch data from backend
+        const response = await fetch(`${API_BASE_URL}/portfolio/featured`);
+        const data = await response.json();
+
+        // 2. If successful, display portfolio
+        if (response.ok && data.success) {
+            displayPortfolio(data.data);
+        }
+    } catch (error) {
+        console.error('Portfolio load error:', error);
+    }
+};
+
+const displayPortfolio = (portfolioItems) => {
+    const portfolioGrid = document.querySelector('.portfolio-grid');
+    
+    // 3. Generate HTML for each portfolio item
+    portfolioGrid.innerHTML = portfolioItems.map(item => `
+        <div class="portfolio-item">
+            <div class="portfolio-content">
+                <h3>${item.title}</h3>
+                <p>${item.description}</p>
+            </div>
+        </div>
+    `).join('');
+};
+```
+
+**Flow:**
+1. Page loads
+2. JavaScript calls `loadPortfolio()`
+3. Fetches data from backend API
+4. Backend queries MongoDB
+5. Returns portfolio items as JSON
+6. JavaScript displays items on page
+
+**Analytics Tracking:**
+```javascript
+const trackEvent = async (event, metadata = {}) => {
+    try {
+        await fetch(`${API_BASE_URL}/analytics/track`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                event,
+                page: window.location.pathname,
+                sessionId: getSessionId(),
+                metadata
+            })
+        });
+    } catch (error) {
+        console.error('Analytics error:', error);
+    }
+};
+
+// Track page view on load
+trackEvent('page_view');
+
+// Track button clicks
+document.querySelectorAll('.cta-button').forEach(button => {
+    button.addEventListener('click', () => {
+        trackEvent('button_click', { button: button.textContent });
+    });
+});
+```
+
+**Session Management:**
+```javascript
+const getSessionId = () => {
+    let sessionId = sessionStorage.getItem('sessionId');
+    if (!sessionId) {
+        // Generate unique session ID
+        sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('sessionId', sessionId);
+    }
+    return sessionId;
+};
+```
+
+---
+
+## 📡 API Endpoints Reference
+
+### Public Endpoints (No Authentication Required)
+
+#### 1. Contact Form
+```
+POST /api/contact
+Content-Type: application/json
+
+Request Body:
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "+1234567890",
+  "company": "Tech Corp",
+  "service": "Social Media Marketing",
+  "message": "I need help with marketing",
+  "budget": "$10000-$25000"
+}
+
+Response (201 Created):
+{
+  "success": true,
+  "message": "Thank you! We will contact you soon.",
+  "contactId": "507f1f77bcf86cd799439011"
+}
+```
+
+#### 2. Newsletter Subscription
+```
+POST /api/newsletter/subscribe
+Content-Type: application/json
+
+Request Body:
+{
+  "email": "subscriber@example.com",
+  "name": "Jane Doe"
+}
+
+Response (201 Created):
+{
+  "success": true,
+  "message": "Successfully subscribed to newsletter!"
+}
+```
+
+#### 3. Get Portfolio Items
+```
+GET /api/portfolio?page=1&limit=12&category=Branding
+
+Response (200 OK):
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "507f1f77bcf86cd799439011",
+      "title": "TechCorp Rebranding",
+      "description": "Complete digital transformation",
+      "category": "Branding",
+      "client": "TechCorp",
+      "images": ["/uploads/images/image1.jpg"],
+      "pdfFile": "/uploads/pdfs/portfolio.pdf",
+      "featured": true
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 12,
+    "total": 50,
+    "pages": 5
+  }
+}
+```
+
+#### 4. Get Featured Portfolio
+```
+GET /api/portfolio/featured
+
+Response (200 OK):
+{
+  "success": true,
+  "data": [/* featured items */]
+}
+```
+
+#### 5. Get Testimonials
+```
+GET /api/testimonials?featured=true
+
+Response (200 OK):
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "507f1f77bcf86cd799439011",
+      "name": "Sarah Johnson",
+      "role": "CEO",
+      "company": "TechVision Inc.",
+      "content": "Amazing service!",
+      "rating": 5,
+      "featured": true
+    }
+  ]
+}
+```
+
+#### 6. Service Inquiry
+```
+POST /api/service-inquiry
+Content-Type: application/json
+
+Request Body:
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "+1234567890",
+  "service": "Photography",
+  "projectDetails": "Need product photography",
+  "timeline": "1-3 months",
+  "budget": "$5000-$10000",
+  "referralSource": "Google"
+}
+
+Response (201 Created):
+{
+  "success": true,
+  "message": "Service inquiry submitted successfully!",
+  "inquiryId": "507f1f77bcf86cd799439011"
+}
+```
+
+#### 7. Analytics Tracking
+```
+POST /api/analytics/track
+Content-Type: application/json
+
+Request Body:
+{
+  "event": "page_view",
+  "page": "/services",
+  "sessionId": "session-123",
+  "metadata": { "duration": 45 }
+}
+
+Response (200 OK):
+{
+  "success": true
+}
+```
+
+### Admin Endpoints (Authentication Required)
+
+#### 1. Admin Login
+```
+POST /api/admin/login
+Content-Type: application/json
+
+Request Body:
+{
+  "username": "admin",
+  "password": "Admin@123"
+}
+
+Response (200 OK):
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "507f1f77bcf86cd799439011",
+    "username": "admin",
+    "email": "admin@creoagency.com",
+    "role": "admin"
+  }
+}
+```
+
+#### 2. Get All Contacts
+```
+GET /api/admin/contacts?page=1&limit=20&status=new
+Authorization: Bearer <token>
+
+Response (200 OK):
+{
+  "success": true,
+  "data": [/* contact items */],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 100,
+    "pages": 5
+  }
+}
+```
+
+#### 3. Update Contact Status
+```
+PATCH /api/admin/contacts/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+Request Body:
+{
+  "status": "contacted"
+}
+
+Response (200 OK):
+{
+  "success": true,
+  "data": {/* updated contact */}
+}
+```
+
+#### 4. Create Portfolio Item
+```
+POST /api/admin/portfolio
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+
+Form Data:
+- title: "TechCorp Rebranding"
+- description: "Complete transformation"
+- category: "Branding"
+- client: "TechCorp"
+- images: [file1.jpg, file2.jpg]
+- pdf: portfolio.pdf
+- featured: true
+
+Response (201 Created):
+{
+  "success": true,
+  "message": "Portfolio item created successfully",
+  "data": {/* portfolio item */}
+}
+```
+
+#### 5. Analytics Dashboard
+```
+GET /api/admin/analytics/dashboard
+Authorization: Bearer <token>
+
+Response (200 OK):
+{
+  "success": true,
+  "data": {
+    "overview": {
+      "totalContacts": 150,
+      "totalSubscribers": 500,
+      "totalInquiries": 75,
+      "totalPortfolio": 25
+    },
+    "recentContacts": [/* last 5 contacts */],
+    "contactsByStatus": [
+      { "_id": "new", "count": 50 },
+      { "_id": "contacted", "count": 75 }
+    ],
+    "monthlyContacts": [
+      { "_id": { "year": 2025, "month": 1 }, "count": 30 }
+    ]
+  }
+}
+```
+
+#### 6. Send Newsletter
+```
+POST /api/admin/newsletter/send
+Authorization: Bearer <token>
+Content-Type: application/json
+
+Request Body:
+{
+  "subject": "Monthly Newsletter - January 2025",
+  "htmlContent": "<h1>Hello!</h1><p>Newsletter content...</p>"
+}
+
+Response (200 OK):
+{
+  "success": true,
+  "message": "Newsletter sent",
+  "stats": {
+    "total": 500,
+    "sent": 498,
+    "failed": 2
+  }
+}
+```
+
+#### 7. Export Contacts to CSV
+```
+GET /api/admin/contacts/export
+Authorization: Bearer <token>
+
+Response (200 OK):
+Content-Type: text/csv
+Content-Disposition: attachment; filename=contacts.csv
+
+Name,Email,Phone,Company,Service,Budget,Status,Message,Date
+John Doe,john@example.com,+123456,Tech Corp,Social Media,$10000,new,"Need help",2025-01-15T10:30:00Z
+```
+
+---
+
+## 🧪 Testing Guide
+
+### 1. Backend API Testing
+
+**Using cURL:**
+
+```bash
+# Test health check
+curl http://localhost:5000/api/health
+
+# Test contact form
+curl -X POST http://localhost:5000/api/contact \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test User",
+    "email": "test@example.com",
+    "message": "This is a test message"
+  }'
+
+# Test newsletter subscription
+curl -X POST http://localhost:5000/api/newsletter/subscribe \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "subscriber@example.com"
+  }'
+
+# Test admin login
+curl -X POST http://localhost:5000/api/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "Admin@123"
+  }'
+
+# Test protected endpoint (replace TOKEN)
+curl http://localhost:5000/api/admin/contacts \
+  -H "Authorization: Bearer TOKEN"
+```
+
+**Using Postman:**
+
+1. Install Postman from postman.com
+2. Create new collection "C REO Agency API"
+3. Add requests for each endpoint
+4. Set environment variables:
+   - `base_url`: http://localhost:5000/api
+   - `token`: (set after login)
+5. Test all endpoints
+
+**Using Thunder Client (VS Code):**
+
+1. Install Thunder Client extension
+2. Create new request
+3. Set method (GET, POST, etc.)
+4. Set URL: `http://localhost:5000/api/contact`
+5. Add headers and body
+6. Click Send
+
+### 2. Frontend Testing
+
+**Manual Testing Checklist:**
+
+- [ ] Navigation menu scrolls to sections smoothly
+- [ ] Hero animations play on page load
+- [ ] Service cards have hover effects
+- [ ] CTA buttons open contact modal
+- [ ] Contact form validates required fields
+- [ ] Contact form submits successfully
+- [ ] Success message displays after submission
+- [ ] Portfolio items load from backend
+- [ ] Testimonials display correctly
+- [ ] Footer newsletter form works
+- [ ] Mobile responsive design works
+- [ ] All links work correctly
+
+**Browser Console Testing:**
+
+```javascript
+// Open browser console (F12)
+
+// Test API connection
+fetch('http://localhost:5000/api/health')
+  .then(r => r.json())
+  .then(data => console.log(data));
+
+// Test contact form
+fetch('http://localhost:5000/api/contact', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    name: 'Test',
+    email: 'test@example.com',
+    message: 'Test message'
+  })
+})
+.then(r => r.json())
+.then(data => console.log(data));
+```
+
+### 3. Database Testing
+
+**Using MongoDB Compass:**
+
+1. Download MongoDB Compass
+2. Connect to: `mongodb://localhost:27017`
+3. Select database: `creo_agency`
+4. View collections:
+   - contacts
+   - newsletters
+   - portfolios
+   - testimonials
+   - serviceinquiries
+   - admins
+   - analytics
+
+**Using MongoDB Shell:**
+
+```bash
+# Connect to MongoDB
+mongosh
+
+# Switch to database
+use creo_agency
+
+# View all contacts
+db.contacts.find().pretty()
+
+# Count contacts
+db.contacts.countDocuments()
+
+# Find specific contact
+db.contacts.findOne({ email: "test@example.com" })
+
+# Update contact status
+db.contacts.updateOne(
+  { email: "test@example.com" },
+  { $set: { status: "contacted" } }
+)
+
+# Delete test contact
+db.contacts.deleteOne({ email: "test@example.com" })
+```
+
+### 4. Email Testing
+
+**Test Email Configuration:**
+
+```bash
+# Send test email using Node.js
+node -e "
+const nodemailer = require('nodemailer');
+require('dotenv').config();
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+
+transporter.sendMail({
+  from: process.env.SMTP_FROM,
+  to: 'your-email@example.com',
+  subject: 'Test Email',
+  html: '<h1>Test</h1><p>Email is working!</p>'
+})
+.then(() => console.log('✅ Email sent'))
+.catch(err => console.error('❌ Error:', err));
+"
+```
+
+**Using Mailtrap (Development):**
+
+1. Go to mailtrap.io
+2. Create free account
+3. Get SMTP credentials
+4. Update .env:
+```env
+SMTP_HOST=smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=your-mailtrap-user
+SMTP_PASS=your-mailtrap-pass
+```
+5. All emails will be captured in Mailtrap inbox
+
+---
+
+## 🚀 Deployment
+
+### Backend Deployment (Heroku)
+
+1. **Install Heroku CLI:**
+```bash
+npm install -g heroku
+```
+
+2. **Login to Heroku:**
+```bash
+heroku login
+```
+
+3. **Create Heroku App:**
+```bash
+cd backend
+heroku create creo-agency-api
+```
+
+4. **Set Environment Variables:**
+```bash
+heroku config:set NODE_ENV=production
+heroku config:set MONGODB_URI=your-mongodb-atlas-uri
+heroku config:set JWT_SECRET=your-secret-key
+heroku config:set SMTP_HOST=smtp.gmail.com
+heroku config:set SMTP_USER=your-email@gmail.com
+heroku config:set SMTP_PASS=your-app-password
+heroku config:set FRONTEND_URL=https://your-frontend-url.com
+```
+
+5. **Deploy:**
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git push heroku main
+```
+
+6. **View Logs:**
+```bash
+heroku logs --tail
+```
+
+### Frontend Deployment (Netlify)
+
+1. **Install Netlify CLI:**
+```bash
+npm install -g netlify-cli
+```
+
+2. **Update API URL in main.js:**
+```javascript
+const API_BASE_URL = 'https://creo-agency-api.herokuapp.com/api';
+```
+
+3. **Deploy:**
+```bash
+cd frontend
+netlify deploy --prod
+```
+
+4. **Or use Netlify UI:**
+   - Go to netlify.com
+   - Drag and drop frontend folder
+   - Deploy
+
+### Alternative: DigitalOcean
+
+**Backend:**
+1. Create Ubuntu droplet
+2. Install Node.js and MongoDB
+3. Clone repository
+4. Install PM2: `npm install -g pm2`
+5. Start server: `pm2 start server.js`
+6. Setup nginx as reverse proxy
+
+**Frontend:**
+1. Build static files
+2. Upload to droplet
+3. Serve with nginx
+
+### MongoDB Atlas Setup
+
+1. Go to mongodb.com/cloud/atlas
+2. Create free cluster
+3. Create database user
+4. Whitelist IP: 0.0.0.0/0 (allow all)
+5. Get connection string
+6. Update MONGODB_URI in .env
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues and Solutions
+
+#### 1. **Backend won't start**
+
+**Error:** `Cannot find module 'express'`
+```bash
+# Solution: Install dependencies
+cd backend
+npm install
+```
+
+**Error:** `MongoNetworkError: failed to connect`
+```bash
+# Solution: Start MongoDB
+mongod
+
+# Or check MongoDB Atlas connection string
+# Make sure IP is whitelisted
+```
+
+**Error:** `Port 5000 already in use`
+```bash
+# Solution: Kill process or use different port
+# Mac/Linux:
+lsof -ti:5000 | xargs kill -9
+
+# Windows:
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+
+# Or change PORT in .env
+PORT=5001
+```
+
+#### 2. **Frontend can't connect to backend**
+
+**Error:** `CORS policy: No 'Access-Control-Allow-Origin' header`
+
+Solution in backend server.js:
+```javascript
+app.use(cors({
+  origin: 'http://localhost:3000',  // Your frontend URL
+  credentials: true
+}));
+```
+
+**Error:** `Failed to fetch`
+```javascript
+// Check API_BASE_URL in main.js
+const API_BASE_URL = 'http://localhost:5000/api';  // Correct
+
+// Make sure backend is running
+// Check browser console for exact error
+```
+
+#### 3. **Email not sending**
+
+**Error:** `Invalid login: 535-5.7.8 Username and Password not accepted`
+
+Solution for Gmail:
+1. Enable 2-Factor Authentication
+2. Generate App Password:
+   - Google Account → Security → 2-Step Verification → App Passwords
+3. Use app password in SMTP_PASS
+
+**Test email configuration:**
+```bash
+# In backend directory
+node -e "console.log(require('dotenv').config()); console.log(process.env.SMTP_USER)"
+```
+
+#### 4. **File upload fails**
+
+**Error:** `MulterError: File too large`
+
+Solution in server.js:
+```javascript
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 },  // 10MB
+  fileFilter: fileFilter
+});
+```
+
+**Error:** `ENOENT: no such file or directory, open 'uploads/images'`
+
+Solution:
+```bash
+# Create directories
+mkdir -p uploads/images uploads/pdfs
+```
+
+#### 5. **JWT token expired**
+
+**Error:** `403 Forbidden: Invalid or expired token`
+
+Solution:
+```javascript
+// Login again to get new token
+// Or increase expiry in server.js:
+const token = jwt.sign(
+  { id: admin._id },
+  process.env.JWT_SECRET,
+  { expiresIn: '7d' }  // 7 days instead of 24h
+);
+```
+
+#### 6. **Database connection issues**
+
+**Error:** `MongoServerError: Authentication failed`
+
+Solution:
+```bash
+# Check MongoDB URI format:
+mongodb://username:password@host:port/database
+
+# For MongoDB Atlas:
+mongodb+srv://username:password@cluster.mongodb.net/creo_agency
+
+# Make sure password is URL encoded if it contains special characters
+```
+
+#### 7. **Frontend not loading portfolio**
+
+Check browser console:
+```javascript
+// Should see

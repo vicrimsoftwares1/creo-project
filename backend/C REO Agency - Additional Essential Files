@@ -1,0 +1,1554 @@
+// ============================================
+// FILE 1: backend/.env.example
+// ============================================
+/*
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
+
+# Database Configuration
+MONGODB_URI=mongodb://localhost:27017/creo_agency
+# For MongoDB Atlas:
+# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/creo_agency?retryWrites=true&w=majority
+
+# JWT Secret (Generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")
+JWT_SECRET=generate-a-very-long-random-secret-key-here-minimum-32-characters
+
+# Email Configuration (Gmail Example)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-gmail-app-specific-password
+SMTP_FROM="C REO Agency" <noreply@creoagency.com>
+
+# Admin Email (receives notifications)
+ADMIN_EMAIL=admin@creoagency.com
+
+# File Upload Settings
+MAX_FILE_SIZE=10485760
+UPLOAD_PATH=./uploads
+
+# Session Settings
+SESSION_SECRET=another-random-secret-for-sessions
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+*/
+
+// ============================================
+// FILE 2: backend/.gitignore
+// ============================================
+/*
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.test
+
+# Uploads
+uploads/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.pdf
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build files
+dist/
+build/
+.cache/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*/
+
+// ============================================
+// FILE 3: backend/scripts/seed.js
+// ============================================
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+require('dotenv').config();
+
+// Database connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/creo_agency', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('✅ MongoDB Connected'))
+.catch(err => {
+  console.error('❌ MongoDB Connection Error:', err);
+  process.exit(1);
+});
+
+// Import schemas (copy from server.js)
+const contactSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  phone: String,
+  company: String,
+  service: String,
+  message: { type: String, required: true },
+  budget: String,
+  status: { type: String, default: 'new' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const portfolioSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  category: String,
+  client: String,
+  industry: String,
+  results: [{ metric: String, value: String }],
+  images: [String],
+  pdfFile: String,
+  link: String,
+  featured: { type: Boolean, default: false },
+  publishedAt: { type: Date, default: Date.now }
+});
+
+const testimonialSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  role: { type: String, required: true },
+  company: String,
+  content: { type: String, required: true },
+  rating: { type: Number, default: 5 },
+  image: String,
+  featured: { type: Boolean, default: false },
+  isApproved: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const adminSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  role: { type: String, default: 'admin' },
+  isActive: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const newsletterSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  name: String,
+  isActive: { type: Boolean, default: true },
+  subscribedAt: { type: Date, default: Date.now }
+});
+
+// Create models
+const Contact = mongoose.model('Contact', contactSchema);
+const Portfolio = mongoose.model('Portfolio', portfolioSchema);
+const Testimonial = mongoose.model('Testimonial', testimonialSchema);
+const Admin = mongoose.model('Admin', adminSchema);
+const Newsletter = mongoose.model('Newsletter', newsletterSchema);
+
+async function seed() {
+  try {
+    console.log('🌱 Starting database seed...\n');
+
+    // Clear existing data (optional - comment out if you want to keep existing data)
+    // await Contact.deleteMany({});
+    // await Portfolio.deleteMany({});
+    // await Testimonial.deleteMany({});
+    // await Admin.deleteMany({});
+    // console.log('🗑️  Cleared existing data\n');
+
+    // Create admin user
+    const adminExists = await Admin.findOne({ username: 'admin' });
+    if (!adminExists) {
+      const hashedPassword = await bcrypt.hash('Admin@123', 10);
+      await Admin.create({
+        username: 'admin',
+        email: 'admin@creoagency.com',
+        password: hashedPassword,
+        role: 'admin'
+      });
+      console.log('✅ Admin user created');
+      console.log('   Username: admin');
+      console.log('   Password: Admin@123');
+      console.log('   ⚠️  CHANGE THIS PASSWORD IN PRODUCTION!\n');
+    } else {
+      console.log('ℹ️  Admin user already exists\n');
+    }
+
+    // Create sample portfolio items
+    const portfolioCount = await Portfolio.countDocuments();
+    if (portfolioCount === 0) {
+      await Portfolio.insertMany([
+        {
+          title: 'TechCorp Digital Transformation',
+          description: 'Complete rebranding and digital marketing strategy resulting in 300% increase in online engagement and 150% growth in qualified leads.',
+          category: 'Branding',
+          client: 'TechCorp Inc.',
+          industry: 'Technology',
+          results: [
+            { metric: 'Engagement Increase', value: '300%' },
+            { metric: 'Lead Growth', value: '150%' },
+            { metric: 'ROI', value: '250%' }
+          ],
+          featured: true
+        },
+        {
+          title: 'EcoWear Sustainable Fashion Campaign',
+          description: 'Multi-channel social media campaign for eco-friendly fashion brand, achieving 500k+ impressions in 30 days and 25k new followers.',
+          category: 'Social Media',
+          client: 'EcoWear',
+          industry: 'Fashion',
+          results: [
+            { metric: 'Impressions', value: '500k+' },
+            { metric: 'New Followers', value: '25k' },
+            { metric: 'Engagement Rate', value: '8.5%' }
+          ],
+          featured: true
+        },
+        {
+          title: 'FitLife App Launch Campaign',
+          description: 'Comprehensive product launch strategy including SEO, PPC, and influencer marketing resulting in 50k app downloads in first month.',
+          category: 'PPC',
+          client: 'FitLife',
+          industry: 'Health & Fitness',
+          results: [
+            { metric: 'App Downloads', value: '50k' },
+            { metric: 'Cost Per Install', value: '$1.20' },
+            { metric: 'User Retention', value: '65%' }
+          ],
+          featured: true
+        },
+        {
+          title: 'Gourmet Bistro Brand Photography',
+          description: 'Professional food photography and visual branding for upscale restaurant, enhancing online presence and customer engagement.',
+          category: 'Photography',
+          client: 'Gourmet Bistro',
+          industry: 'Food & Beverage',
+          results: [
+            { metric: 'Photo Shoot Days', value: '3' },
+            { metric: 'Images Delivered', value: '150+' },
+            { metric: 'Social Engagement Up', value: '180%' }
+          ],
+          featured: false
+        },
+        {
+          title: 'Legal Partners SEO Optimization',
+          description: 'SEO strategy and implementation for law firm, ranking #1 for 15 key terms and tripling organic traffic in 6 months.',
+          category: 'SEO & Analytics',
+          client: 'Legal Partners LLP',
+          industry: 'Legal Services',
+          results: [
+            { metric: 'Keywords Ranked #1', value: '15' },
+            { metric: 'Organic Traffic', value: '+300%' },
+            { metric: 'Consultation Requests', value: '+250%' }
+          ],
+          featured: false
+        },
+        {
+          title: 'Urban Real Estate Content Strategy',
+          description: 'Blog content and email marketing strategy generating 10k monthly visitors and 500+ qualified property inquiries.',
+          category: 'Content Strategy',
+          client: 'Urban Real Estate',
+          industry: 'Real Estate',
+          results: [
+            { metric: 'Monthly Visitors', value: '10k' },
+            { metric: 'Email Subscribers', value: '5k' },
+            { metric: 'Property Inquiries', value: '500+' }
+          ],
+          featured: false
+        }
+      ]);
+      console.log('✅ Portfolio items created (6 items)\n');
+    } else {
+      console.log(`ℹ️  Portfolio already has ${portfolioCount} items\n`);
+    }
+
+    // Create sample testimonials
+    const testimonialCount = await Testimonial.countDocuments();
+    if (testimonialCount === 0) {
+      await Testimonial.insertMany([
+        {
+          name: 'Sarah Johnson',
+          role: 'CEO',
+          company: 'TechVision Inc.',
+          content: 'Working with C REO Agency has been transformative for our business. Their strategic approach and creative execution resulted in a 400% increase in qualified leads. The team is professional, responsive, and truly understands digital marketing.',
+          rating: 5,
+          featured: true,
+          isApproved: true
+        },
+        {
+          name: 'Michael Chen',
+          role: 'Marketing Director',
+          company: 'EcoWear',
+          content: 'The social media campaign exceeded all our expectations. We saw incredible engagement and our brand awareness skyrocketed. C REO Agency really knows how to connect with audiences.',
+          rating: 5,
+          featured: true,
+          isApproved: true
+        },
+        {
+          name: 'Jennifer Martinez',
+          role: 'Founder',
+          company: 'FitLife',
+          content: 'From concept to execution, C REO Agency delivered excellence. Our app launch was a huge success thanks to their comprehensive marketing strategy. Highly recommend!',
+          rating: 5,
+          featured: true,
+          isApproved: true
+        },
+        {
+          name: 'David Thompson',
+          role: 'Owner',
+          company: 'Gourmet Bistro',
+          content: 'The photography work was stunning and perfectly captured our brand essence. Our social media engagement has never been higher. Thank you C REO!',
+          rating: 5,
+          featured: false,
+          isApproved: true
+        }
+      ]);
+      console.log('✅ Testimonials created (4 items)\n');
+    } else {
+      console.log(`ℹ️  Testimonials already has ${testimonialCount} items\n`);
+    }
+
+    // Create sample newsletter subscribers
+    const subscriberCount = await Newsletter.countDocuments();
+    if (subscriberCount === 0) {
+      await Newsletter.insertMany([
+        { email: 'subscriber1@example.com', name: 'John Doe' },
+        { email: 'subscriber2@example.com', name: 'Jane Smith' },
+        { email: 'subscriber3@example.com', name: 'Bob Wilson' }
+      ]);
+      console.log('✅ Newsletter subscribers created (3 items)\n');
+    } else {
+      console.log(`ℹ️  Newsletter already has ${subscriberCount} subscribers\n`);
+    }
+
+    // Create sample contacts
+    const contactCount = await Contact.countDocuments();
+    if (contactCount === 0) {
+      await Contact.insertMany([
+        {
+          name: 'Alice Brown',
+          email: 'alice@techstartup.com',
+          phone: '+1-555-0101',
+          company: 'Tech Startup Inc',
+          service: 'Social Media Marketing',
+          message: 'Looking for help with our social media presence and brand awareness.',
+          budget: '$10000-$25000',
+          status: 'new'
+        },
+        {
+          name: 'Robert Green',
+          email: 'robert@localshop.com',
+          phone: '+1-555-0102',
+          company: 'Local Shop',
+          service: 'SEO & Analytics',
+          message: 'Need to improve our search rankings and online visibility.',
+          budget: '$5000-$10000',
+          status: 'contacted'
+        }
+      ]);
+      console.log('✅ Sample contacts created (2 items)\n');
+    } else {
+      console.log(`ℹ️  Contacts already has ${contactCount} entries\n`);
+    }
+
+    console.log('✅ Database seeding completed successfully!\n');
+    console.log('📊 Summary:');
+    console.log(`   - Admin users: ${await Admin.countDocuments()}`);
+    console.log(`   - Portfolio items: ${await Portfolio.countDocuments()}`);
+    console.log(`   - Testimonials: ${await Testimonial.countDocuments()}`);
+    console.log(`   - Newsletter subscribers: ${await Newsletter.countDocuments()}`);
+    console.log(`   - Contacts: ${await Contact.countDocuments()}`);
+    console.log('\n🎉 You can now start using the application!');
+    console.log('   Login at: http://localhost:5000/api/admin/login');
+    console.log('   Username: admin');
+    console.log('   Password: Admin@123\n');
+
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Seeding error:', error);
+    process.exit(1);
+  }
+}
+
+// Run seeding
+seed();
+
+// ============================================
+// FILE 4: backend/package.json
+// ============================================
+/*
+{
+  "name": "creo-agency-backend",
+  "version": "1.0.0",
+  "description": "Backend API for C REO Marketing Agency website",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "seed": "node scripts/seed.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "marketing",
+    "agency",
+    "api",
+    "backend",
+    "express",
+    "mongodb"
+  ],
+  "author": "C REO Agency",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^8.0.3",
+    "cors": "^2.8.5",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.7",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  }
+}
+*/
+
+// ============================================
+// FILE 5: frontend/admin.html (Admin Dashboard)
+// ============================================
+/*
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - C REO Agency</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #8B4513 0%, #D4A017 100%);
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 1rem 2rem;
+            background: #1a1a1a;
+            border: 2px solid #2a2a2a;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-tab:hover,
+        .nav-tab.active {
+            background: linear-gradient(135deg, #8B4513 0%, #D4A017 100%);
+            border-color: #D4A017;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: #1a1a1a;
+            padding: 2rem;
+            border-radius: 15px;
+            border: 1px solid #2a2a2a;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #D4A017 0%, #8B4513 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: #b0b0b0;
+            margin-top: 0.5rem;
+        }
+
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        .table-container {
+            background: #1a1a1a;
+            border-radius: 15px;
+            padding: 2rem;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        th {
+            background: #0f0f0f;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #D4A017 0%, #8B4513 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(212, 160, 23, 0.3);
+        }
+
+        .status-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-new { background: #ffc107; color: #000; }
+        .status-contacted { background: #17a2b8; color: #fff; }
+        .status-qualified { background: #28a745; color: #fff; }
+        .status-converted { background: #6c757d; color: #fff; }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-box {
+            background: #1a1a1a;
+            padding: 3rem;
+            border-radius: 20px;
+            border: 1px solid #2a2a2a;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-box h2 {
+            background: linear-gradient(135deg, #D4A017 0%, #8B4513 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #b0b0b0;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 1rem;
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #D4A017;
+        }
+
+        .error-message {
+            background: #dc3545;
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-box">
+            <h2>Admin Login</h2>
+            <div id="loginError" class="error-message"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboardScreen" style="display: none;">
+        <div class="container">
+            <div class="header">
+                <h1>Admin Dashboard</h1>
+                <p>Welcome back, <span id="adminName"></span></p>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalContacts">0</div>
+                    <div class="stat-label">Total Contacts</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalSubscribers">0</div>
+                    <div class="stat-label">Newsletter Subscribers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalInquiries">0</div>
+                    <div class="stat-label">Service Inquiries</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalPortfolio">0</div>
+                    <div class="stat-label">Portfolio Items</div>
+                </div>
+            </div>
+
+            <div class="nav-tabs">
+                <div class="nav-tab active" onclick="showTab('contacts')">Contacts</div>
+                <div class="nav-tab" onclick="showTab('inquiries')">Inquiries</div>
+                <div class="nav-tab" onclick="showTab('subscribers')">Subscribers</div>
+            </div>
+
+            <div id="contacts" class="content-section active">
+                <div class="table-container">
+                    <h2 style="margin-bottom: 1rem;">Contact Submissions</h2>
+                    <table id="contactsTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Company</th>
+                                <th>Service</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="inquiries" class="content-section">
+                <div class="table-container">
+                    <h2 style="margin-bottom: 1rem;">Service Inquiries</h2>
+                    <table id="inquiriesTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Service</th>
+                                <th>Timeline</th>
+                                <th>Budget</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="subscribers" class="content-section">
+                <div class="table-container">
+                    <h2 style="margin-bottom: 1rem;">Newsletter Subscribers</h2>
+                    <table id="subscribersTable">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>Subscribed Date</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let authToken = localStorage.getItem('adminToken');
+
+        // Check if already logged in
+        if (authToken) {
+            showDashboard();
+        }
+
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.token;
+                    localStorage.setItem('adminToken', authToken);
+                    localStorage.setItem('adminUser', data.user.username);
+                    showDashboard();
+                } else {
+                    showError(data.error || 'Login failed');
+                }
+            } catch (error) {
+                showError('Network error. Please try again.');
+            }
+        });
+
+        function showError(message) {
+            const errorEl = document.getElementById('loginError');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 5000);
+        }
+
+        async function showDashboard() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardScreen').style.display = 'block';
+            document.getElementById('adminName').textContent = localStorage.getItem('adminUser') || 'Admin';
+
+            await loadDashboardData();
+        }
+
+        async function loadDashboardData() {
+            try {
+                // Load statistics
+                const statsResponse = await fetch(`${API_URL}/admin/analytics/dashboard`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const statsData = await statsResponse.json();
+
+                if (statsData.success) {
+                    document.getElementById('totalContacts').textContent = statsData.data.overview.totalContacts;
+                    document.getElementById('totalSubscribers').textContent = statsData.data.overview.totalSubscribers;
+                    document.getElementById('totalInquiries').textContent = statsData.data.overview.totalInquiries;
+                    document.getElementById('totalPortfolio').textContent = statsData.data.overview.totalPortfolio;
+                }
+
+                // Load contacts
+                await loadContacts();
+                await loadInquiries();
+                await loadSubscribers();
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                if (error.message.includes('401') || error.message.includes('403')) {
+                    logout();
+                }
+            }
+        }
+
+        async function loadContacts() {
+            const response = await fetch(`${API_URL}/admin/contacts`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                const tbody = document.querySelector('#contactsTable tbody');
+                tbody.innerHTML = data.data.map(contact => `
+                    <tr>
+                        <td>${contact.name}</td>
+                        <td>${contact.email}</td>
+                        <td>${contact.company || 'N/A'}</td>
+                        <td>${contact.service || 'N/A'}</td>
+                        <td><span class="status-badge status-${contact.status}">${contact.status}</span></td>
+                        <td>${new Date(contact.createdAt).toLocaleDateString()}</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="viewContact('${contact._id}')">View</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        async function loadInquiries() {
+            const response = await fetch(`${API_URL}/admin/inquiries`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                const tbody = document.querySelector('#inquiriesTable tbody');
+                tbody.innerHTML = data.data.map(inquiry => `
+                    <tr>
+                        <td>${inquiry.name}</td>
+                        <td>${inquiry.email}</td>
+                        <td>${inquiry.service}</td>
+                        <td>${inquiry.timeline || 'N/A'}</td>
+                        <td>${inquiry.budget || 'N/A'}</td>
+                        <td><span class="status-badge status-${inquiry.status}">${inquiry.status}</span></td>
+                        <td>${new Date(inquiry.createdAt).toLocaleDateString()}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        async function loadSubscribers() {
+            const response = await fetch(`${API_URL}/admin/newsletter`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                const tbody = document.querySelector('#subscribersTable tbody');
+                tbody.innerHTML = data.data.map(sub => `
+                    <tr>
+                        <td>${sub.email}</td>
+                        <td>${sub.name || 'N/A'}</td>
+                        <td><span class="status-badge ${sub.isActive ? 'status-qualified' : 'status-converted'}">${sub.isActive ? 'Active' : 'Inactive'}</span></td>
+                        <td>${new Date(sub.subscribedAt).toLocaleDateString()}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function showTab(tabName) {
+            // Remove active class from all tabs and sections
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+
+            // Add active class to selected tab and section
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        function viewContact(id) {
+            // Implement view contact details modal
+            alert('View contact details for ID: ' + id);
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminUser');
+            authToken = null;
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('dashboardScreen').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
+*/
+
+// ============================================
+// FILE 6: frontend/js/main.js (Complete Integration)
+// ============================================
+/*
+// API Configuration
+const API_BASE_URL = 'http://localhost:5000/api';
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+// Session Management
+function getSessionId() {
+    let sessionId = sessionStorage.getItem('sessionId');
+    if (!sessionId) {
+        sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('sessionId', sessionId);
+    }
+    return sessionId;
+}
+
+// Track Analytics Event
+async function trackEvent(event, metadata = {}) {
+    try {
+        await fetch(`${API_BASE_URL}/analytics/track`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                event,
+                page: window.location.pathname,
+                sessionId: getSessionId(),
+                metadata
+            })
+        });
+    } catch (error) {
+        console.error('Analytics tracking error:', error);
+    }
+}
+
+// ============================================
+// CONTACT FORM
+// ============================================
+
+async function handleContactFormSubmit(formData) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/contact`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            return { success: true, message: data.message };
+        } else {
+            return { success: false, message: data.error || 'Failed to submit form' };
+        }
+    } catch (error) {
+        console.error('Contact form error:', error);
+        return { success: false, message: 'Network error. Please try again.' };
+    }
+}
+
+// ============================================
+// NEWSLETTER
+// ============================================
+
+async function handleNewsletterSubmit(email, name = '') {
+    try {
+        const response = await fetch(`${API_BASE_URL}/newsletter/subscribe`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, name })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            return { success: true, message: data.message };
+        } else {
+            return { success: false, message: data.error || 'Failed to subscribe' };
+        }
+    } catch (error) {
+        console.error('Newsletter error:', error);
+        return { success: false, message: 'Network error. Please try again.' };
+    }
+}
+
+// ============================================
+// PORTFOLIO
+// ============================================
+
+async function loadPortfolio(featured = true) {
+    try {
+        const endpoint = featured ? '/portfolio/featured' : '/portfolio';
+        const response = await fetch(`${API_BASE_URL}${endpoint}`);
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            displayPortfolio(data.data);
+        }
+    } catch (error) {
+        console.error('Portfolio load error:', error);
+    }
+}
+
+function displayPortfolio(portfolioItems) {
+    const portfolioGrid = document.querySelector('.portfolio-grid');
+    
+    if (!portfolioGrid || portfolioItems.length === 0) return;
+
+    portfolioGrid.innerHTML = portfolioItems.map(item => `
+        <div class="portfolio-item" style="background: linear-gradient(135deg, rgba(139, 69, 19, 0.8), rgba(212, 160, 23, 0.8));">
+            <div class="portfolio-content">
+                <h3>${item.title}</h3>
+                <p>${item.description}</p>
+                ${item.pdfFile ? `<a href="${API_BASE_URL.replace('/api', '')}${item.pdfFile}" target="_blank" style="color: white; text-decoration: underline;">View Portfolio PDF</a>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+// ============================================
+// TESTIMONIALS
+// ============================================
+
+async function loadTestimonials() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/testimonials?featured=true`);
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            displayTestimonials(data.data);
+        }
+    } catch (error) {
+        console.error('Testimonials load error:', error);
+    }
+}
+
+function displayTestimonials(testimonials) {
+    const testimonialSlider = document.querySelector('.testimonial-slider');
+    
+    if (!testimonialSlider || testimonials.length === 0) return;
+
+    // Display first testimonial (you can add slider logic here)
+    const testimonial = testimonials[0];
+    testimonialSlider.innerHTML = `
+        <div class="testimonial">
+            <p>"${testimonial.content}"</p>
+            <div class="testimonial-author">${testimonial.name}</div>
+            <div class="testimonial-role">${testimonial.role}${testimonial.company ? ', ' + testimonial.company : ''}</div>
+        </div>
+    `;
+}
+
+// ============================================
+// INITIALIZATION
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 C REO Agency - Frontend initialized');
+    
+    // Track page view
+    trackEvent('page_view');
+
+    // Load dynamic content
+    loadPortfolio(true);
+    loadTestimonials();
+
+    // Track button clicks
+    document.querySelectorAll('.cta-button, .secondary-button').forEach(button => {
+        button.addEventListener('click', (e) => {
+            trackEvent('button_click', { button: button.textContent.trim() });
+        });
+    });
+
+    // Track service card clicks
+    document.querySelectorAll('.service-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const serviceName = card.querySelector('h3').textContent;
+            trackEvent('service_view', { service: serviceName });
+        });
+    });
+
+    // Track portfolio item clicks
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.portfolio-item')) {
+            const item = e.target.closest('.portfolio-item');
+            const title = item.querySelector('h3')?.textContent;
+            trackEvent('portfolio_view', { title });
+        }
+    });
+
+    console.log('✅ All event listeners attached');
+});
+
+// Export functions for use in HTML
+window.handleContactFormSubmit = handleContactFormSubmit;
+window.handleNewsletterSubmit = handleNewsletterSubmit;
+window.trackEvent = trackEvent;
+*/
+
+// ============================================
+// FILE 7: README_COMPLETE.md (Final Instructions)
+// ============================================
+/*
+# C REO Agency - Complete Setup Instructions
+
+## 📦 Complete File Structure
+
+```
+creo-agency/
+│
+├── backend/
+│   ├── server.js                 # Main backend server (from artifact 1)
+│   ├── package.json              # Dependencies configuration (above)
+│   ├── .env                      # Environment variables (create from .env.example)
+│   ├── .env.example              # Environment template (above)
+│   ├── .gitignore               # Git ignore rules (above)
+│   ├── scripts/
+│   │   └── seed.js              # Database seeding script (above)
+│   └── uploads/
+│       ├── images/              # Portfolio images (created automatically)
+│       └── pdfs/                # Portfolio PDFs (created automatically)
+│
+├── frontend/
+│   ├── index.html               # Main website (your original HTML)
+│   ├── admin.html               # Admin dashboard (above)
+│   └── js/
+│       └── main.js              # Frontend integration (above)
+│
+└── README.md                    # Complete integration guide (artifact 2)
+```
+
+## 🚀 Complete Setup Process
+
+### Step 1: Install Prerequisites
+
+```bash
+# Install Node.js (v14 or higher)
+# Download from: https://nodejs.org/
+
+# Install MongoDB
+# Option A - Local: https://www.mongodb.com/try/download/community
+# Option B - Cloud: https://www.mongodb.com/cloud/atlas (free tier)
+
+# Verify installations
+node --version
+npm --version
+mongod --version  # or mongosh --version for cloud
+```
+
+### Step 2: Backend Setup
+
+```bash
+# Create project directory
+mkdir creo-agency
+cd creo-agency
+
+# Create backend directory
+mkdir backend
+cd backend
+
+# Create package.json (copy from above FILE 4)
+# Or initialize with: npm init -y
+
+# Install dependencies
+npm install express mongoose cors multer nodemailer jsonwebtoken bcryptjs dotenv
+npm install --save-dev nodemon
+
+# Create server.js (copy from first artifact)
+
+# Create .env file (copy from FILE 1 above and fill in your values)
+# IMPORTANT: Update SMTP settings for email to work
+
+# Create scripts directory and seed.js
+mkdir scripts
+# Copy seed.js content from FILE 3 above
+
+# Create .gitignore (copy from FILE 2 above)
+
+# Create upload directories
+mkdir -p uploads/images uploads/pdfs
+
+# Start MongoDB (if local)
+mongod
+# Or connect to MongoDB Atlas (cloud)
+
+# Seed the database
+npm run seed
+
+# Start backend server
+npm run dev
+```
+
+You should see:
+```
+✅ MongoDB Connected
+╔═══════════════════════════════════════════╗
+║   C REO AGENCY - BACKEND API SERVER      ║
+║   Status: Running ✅                      ║
+║   Port: 5000                             ║
+╚═══════════════════════════════════════════╝
+```
+
+### Step 3: Frontend Setup
+
+```bash
+# Open new terminal
+cd ../
+mkdir frontend
+cd frontend
+
+# Create index.html (your original HTML file)
+# Add the contact form modal code from the integration guide
+
+# Create admin.html (copy from FILE 5 above)
+
+# Create js directory and main.js
+mkdir js
+# Copy main.js content from FILE 6 above
+
+# Update API_BASE_URL in main.js if needed
+# Default is: http://localhost:5000/api
+
+# Start frontend server
+python -m http.server 3000
+# Or use: python3 -m http.server 3000
+```
+
+### Step 4: Verify Installation
+
+**Test Backend:**
+```bash
+# In new terminal
+curl http://localhost:5000/api/health
+
+# Should return: {"status":"OK","timestamp":"..."}
+```
+
+**Test Frontend:**
+1. Open browser: http://localhost:3000
+2. Open browser console (F12)
+3. Should see: "🚀 C REO Agency - Frontend initialized"
+4. Should see: "✅ All event listeners attached"
+
+**Test Admin:**
+1. Open browser: http://localhost:3000/admin.html
+2. Login with:
+   - Username: admin
+   - Password: Admin@123
+3. Should see dashboard with statistics
+
+### Step 5: Test Features
+
+**Contact Form:**
+1. Click "Get Started" button
+2. Fill out the form
+3. Submit
+4. Check:
+   - Success message appears
+   - Email received (check your SMTP email)
+   - Entry in database
+   - Admin dashboard shows new contact
+
+**Newsletter:**
+1. Enter email in footer
+2. Click Subscribe
+3. Check:
+   - Success message
+   - Welcome email received
+   - Entry in admin dashboard
+
+**Portfolio:**
+1. Page should auto-load portfolio items
+2. Should see featured projects
+3. Click items to track analytics
+
+**Admin Dashboard:**
+1. Login at http://localhost:3000/admin.html
+2. View statistics
+3. Browse contacts, inquiries, subscribers
+4. Test logout
+
+## 🔧 Configuration
+
+### Email Setup (Gmail)
+
+1. Go to: https://myaccount.google.com/security
+2. Enable 2-Step Verification
+3. Generate App Password:
+   - Go to Security → 2-Step Verification → App Passwords
+   - Select "Mail" and your device
+   - Copy the 16-character password
+4. Update .env:
+```env
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-16-char-app-password
+```
+
+### MongoDB Atlas Setup (Cloud Database)
+
+1. Go to: https://www.mongodb.com/cloud/atlas
+2. Create free account
+3. Create new cluster (M0 Free tier)
+4. Create database user:
+   - Username: creo_admin
+   - Password: (generate strong password)
+5. Whitelist IP: 0.0.0.0/0 (allow from anywhere)
+6. Get connection string
+7. Update .env:
+```env
+MONGODB_URI=mongodb+srv://creo_admin:password@cluster.mongodb.net/creo_agency?retryWrites=true&w=majority
+```
+
+## 📝 Daily Usage
+
+**Start Backend:**
+```bash
+cd backend
+npm run dev
+```
+
+**Start Frontend:**
+```bash
+cd frontend
+python -m http.server 3000
+```
+
+**Access:**
+- Website: http://localhost:3000
+- Admin: http://localhost:3000/admin.html
+- API: http://localhost:5000/api
+
+## 🎯 Next Steps
+
+1. **Customize Design**: Update colors, fonts, content
+2. **Add Content**: Upload portfolio items, add testimonials
+3. **Test Everything**: Forms, emails, database
+4. **Deploy**: Follow deployment guide in README.md
+5. **Monitor**: Check analytics, respond to contacts
+6. **Backup**: Regular database backups
+
+## 📚 Important Files Summary
+
+| File | Location | Purpose |
+|------|----------|---------|
+| server.js | backend/ | Main API server |
+| .env | backend/ | Configuration |
+| seed.js | backend/scripts/ | Database seeding |
+| index.html | frontend/ | Main website |
+| admin.html | frontend/ | Admin dashboard |
+| main.js | frontend/js/ | Frontend integration |
+
+## 🔐 Security Checklist
+
+- [ ] Change default admin password
+- [ ] Update JWT_SECRET to random string
+- [ ] Configure SMTP with app password
+- [ ] Add .env to .gitignore
+- [ ] Never commit .env to Git
+- [ ] Use HTTPS in production
+- [ ] Whitelist specific IPs for MongoDB
+- [ ] Enable rate limiting in production
+
+## ✅ Verification Checklist
+
+- [ ] Backend starts without errors
+- [ ] Frontend loads correctly
+- [ ] Contact form submits successfully
+- [ ] Emails are received
+- [ ] Database stores data
+- [ ] Admin login works
+- [ ] Dashboard shows statistics
+- [ ] Portfolio displays
+- [ ] Testimonials display
+- [ ] Analytics tracking works
+- [ ] All links work
+- [ ] Mobile responsive
+
+## 🆘 Common Issues
+
+**Backend won't start:**
+- Check MongoDB is running
+- Verify .env file exists
+- Check all dependencies installed
+
+**Email not sending:**
+- Verify SMTP credentials
+- Check app password (not regular password)
+- Test with mailtrap.io first
+
+**Frontend can't connect:**
+- Check API_BASE_URL is correct
+- Verify backend is running
+- Check CORS settings
+
+**Admin login fails:**
+- Run seed script: npm run seed
+- Check username/password
+- Verify JWT_SECRET is set
+
+## 🎉 Success!
+
+You now have a complete, production-ready marketing agency website!
+
+**Features Working:**
+✅ Contact forms with email notifications
+✅ Newsletter subscription system
+✅ Portfolio management
+✅ Testimonials display
+✅ Admin authentication
+✅ Analytics tracking
+✅ File uploads
+✅ Database integration
+✅ RESTful API
+✅ Responsive design
+
+**Support:**
+- Documentation: See README.md in artifact 2
+- Troubleshooting: Check integration guide
+- API Reference: See endpoint documentation
+
+Happy building! 🚀
+*/
+
+// ============================================
+// FILE 8: backend/test-email.js (Email Testing Script)
+// ============================================
+/*
+const nodemailer = require('nodemailer');
+require('dotenv').config();
+
+async function testEmail() {
+    console.log('📧 Testing email configuration...\n');
+    
+    console.log('Configuration:');
+    console.log('SMTP Host:', process.env.SMTP_HOST);
+    console.log('SMTP Port:', process.env.SMTP_PORT);
+    console.log('SMTP User:', process.env.SMTP_USER);
+    console.log('SMTP Pass:', process.env.SMTP_PASS ? '✓ Set' : '✗ Not set');
+    console.log('');
+
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        secure: false,
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+        }
+    });
+
+    try {
+        // Verify connection
+        await transporter.verify();
+        console.log('✅ SMTP connection verified');
+
+        // Send test email
+        const info = await transporter.sendMail({
+            from: process.env.SMTP_FROM || '"C REO Agency" <noreply@creoagency.com>',
+            to: process.env.SMTP_USER,
+            subject: 'Test Email from C REO Agency',
+            html: '<h1>Success!</h1><p>Your email configuration is working correctly.</p>'
+        });
+
+        console.log('✅ Test email sent successfully');
+        console.log('Message ID:', info.messageId);
+        console.log('\n🎉 Email configuration is working!');
+        
+    } catch (error) {
+        console.error('❌ Email test failed:', error.message);
+        console.log('\nTroubleshooting:');
+        console.log('1. Check SMTP credentials in .env');
+        console.log('2. For Gmail, use App Password (not regular password)');
+        console.log('3. Enable 2-Factor Authentication in Gmail');
+        console.log('4. Generate App Password: https://myaccount.google.com/apppasswords');
+    }
+}
+
+testEmail();
+*/
+
+// To run: node backend/test-email.js
