@@ -6,8 +6,8 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "scripts": {
-    "start": "node server.js",
+"scripts": {
+    "start": "node utils/migrate.js && node utils/seedAdmin.js && node server.js",
     "dev": "nodemon server.js",
     "migrate": "node utils/migrate.js",
     "seed-admin": "node utils/seedAdmin.js"
