@@ -1,0 +1,30 @@
+# render.yaml — Render deployment configuration
+# Commit this to your repo root. Render auto-detects it.
+
+services:
+  - type: web
+    name: creo-agency-backend
+    runtime: node
+    region: oregon                # closest to Kenya: oregon or frankfurt
+    plan: free                    # upgrade to starter for always-on
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      # Add these manually in Render Dashboard → Environment:
+      # DATABASE_URL     → your Supabase connection string
+      # JWT_SECRET       → long random string
+      # SMTP_HOST        → smtp.gmail.com
+      # SMTP_PORT        → 587
+      # SMTP_USER        → your Gmail
+      # SMTP_PASS        → Gmail app password
+      # SMTP_FROM        → "C REO Agency" <your@gmail.com>
+      # ADMIN_EMAIL_NOTIFY → hello@creoagency.com
+      # CLOUDINARY_CLOUD_NAME
+      # CLOUDINARY_API_KEY
+      # CLOUDINARY_API_SECRET
+      # FRONTEND_URL     → https://your-site.vercel.app
