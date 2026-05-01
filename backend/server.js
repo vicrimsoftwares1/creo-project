@@ -1157,10 +1157,15 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
 app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════╗
-║   C REO AGENCY - BACKEND API SERVER      ║
+║  C REO AGENCY - BACKEND API SERVER      ║
 ║   Status: Running ✅                      ║
 ║   Port: ${PORT}                            ║
 ║   Environment: ${process.env.NODE_ENV || 'development'}              ║
