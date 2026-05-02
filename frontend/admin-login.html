@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login | C REO Agency</title>
+    <link rel="stylesheet" href="css/style.css"> <style>
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: #1e293b; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 100%; max-width: 400px; }
+        h2 { text-align: center; color: #38bdf8; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: #94a3b8; }
+        input { width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 0.75rem; background: #38bdf8; border: none; border-radius: 6px; color: #0f172a; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 1rem; }
+        button:hover { background: #0ea5e9; }
+        #message { text-align: center; margin-top: 1rem; font-size: 0.85rem; }
+        .error { color: #f87171; }
+        .success { color: #4ade80; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <h2>C REO Admin</h2>
+    <form id="loginForm">
+        <div class="form-group">
+            <label>Username or Email</label>
+            <input type="text" id="username" placeholder="creo_admin" required>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="••••••••" required>
+        </div>
+        <button type="submit">Unlock Dashboard</button>
+    </form>
+    <div id="message"></div>
+</div>
+
+<script>
+    // YOUR LIVE RENDER URL
+    const API_URL = 'https://creo-project.onrender.com/api';
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const messageDiv = document.getElementById('message');
+        messageDiv.innerText = 'Authenticating...';
+
+        const credentials = {
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(credentials)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                messageDiv.className = 'success';
+                messageDiv.innerText = 'Login Successful! Redirecting...';
+                // Store the security token
+                localStorage.setItem('adminToken', data.token);
+                // Redirect to the actual dashboard file
+                setTimeout(() => { window.location.href = 'admin-dashboard.html'; }, 1500);
+            } else {
+                messageDiv.className = 'error';
+                messageDiv.innerText = data.message || 'Invalid Credentials';
+            }
+        } catch (err) {
+            messageDiv.className = 'error';
+            messageDiv.innerText = 'Server error. Is the backend awake?';
+        }
+    });
+</script>
+
+</body>
+</html>
