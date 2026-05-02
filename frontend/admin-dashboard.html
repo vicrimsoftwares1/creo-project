@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard | C REO</title>
+    <style>
+        body { font-family: sans-serif; background: #0f172a; color: white; padding: 2rem; }
+        .card { background: #1e293b; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #38bdf8; }
+        button { background: #f87171; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Welcome to the Command Center</h1>
+        <p>You are successfully logged in as Admin.</p>
+        <button onclick="logout()">Secure Logout</button>
+    </div>
+
+    <script>
+        // Security Check: If no token, kick them out!
+        if (!localStorage.getItem('adminToken')) {
+            window.location.href = 'admin-login.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = 'admin-login.html';
+        }
+    </script>
+</body>
+</html>
