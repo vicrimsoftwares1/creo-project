@@ -8,7 +8,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
-    <style>
+    <style>/* ═══════════════════════════════════════════
+        GRAIN TEXTURE OVERLAY
+     ═══════════════════════════════════════════ */
+        body::before {
+        content:'';
+        position:fixed; inset:0; z-index:9999;
+        pointer-events:none;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+        opacity:0.03;
+        }
         * {
             margin: 0;
             padding: 0;
@@ -341,32 +350,30 @@
 
         .portfolio-item {
             position: relative;
-            border-radius: 20px;
+            border-radius: var(--radius);
             overflow: hidden;
             height: 300px;
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
-        .portfolio-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #8B4513 0%, #D4A017 100%);
-            opacity: 0.8;
-            transition: opacity 0.3s ease;
-        }
+        .portfolio-item:hover .portfolio-item-bg { filter:brightness(1.15); }
+    .portfolio-item:hover { transform:scale(1.02); box-shadow:0 20px 50px rgba(0,0,0,0.5); }
+    /* Different gradient angles per card */
+    .portfolio-item:nth-child(2) .portfolio-item-bg { background:linear-gradient(225deg, var(--gold-dark), #c8860c); }
+    .portfolio-item:nth-child(3) .portfolio-item-bg { background:linear-gradient(45deg, #6b3410, var(--gold)); }
+    .portfolio-item:nth-child(4) .portfolio-item-bg { background:linear-gradient(315deg, var(--gold-dark), var(--gold-light)); }
+    .portfolio-overlay {
+      position:absolute; inset:0;
+      background:linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 60%);
+    }
+    .portfolio-item:hover::before {
+        opacity: 0.95;
+    }
 
-        .portfolio-item:hover::before {
-            opacity: 0.95;
-        }
-
-        .portfolio-item:hover {
-            transform: scale(1.05);
-        }
+    .portfolio-item:hover {
+        transform: scale(1.05);
+    }
 
         .portfolio-content {
             position: absolute;
@@ -378,13 +385,99 @@
         }
 
         .portfolio-content h3 {
-            font-size: 1.8rem;
-            margin-bottom: 0.5rem;
-        }
+            font-family:var(--font-display); font-size:1.5rem; font-weight:600;
+            margin-bottom:0.3rem;        }
 
         .portfolio-content p {
             opacity: 0.9;
         }
+/* ═══════════════════════════════════════════
+       PDF DOCUMENTS SECTION
+    ═══════════════════════════════════════════ */
+    .documents { background:var(--surface); }
+    .docs-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+      gap:1.5rem; max-width:1100px; margin:0 auto;
+    }
+    .doc-card {
+      background:var(--surface-2); border:1px solid var(--border);
+      border-radius:var(--radius); padding:2rem;
+      display:flex; flex-direction:column; gap:1.2rem;
+      transition:all 0.3s ease; cursor:pointer;
+    }
+    .doc-card:hover { border-color:var(--gold); transform:translateY(-5px); box-shadow:0 15px 40px rgba(0,0,0,0.4); }
+    .doc-icon {
+      width:52px; height:52px; border-radius:12px;
+      background:linear-gradient(135deg, var(--gold-dark), var(--gold));
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.5rem;
+    }
+    .doc-card h3 { font-family:var(--font-display); font-size:1.2rem; font-weight:600; }
+    .doc-card p  { color:var(--muted); font-size:0.88rem; line-height:1.6; flex:1; }
+    .doc-actions { display:flex; gap:0.8rem; }
+    .doc-btn {
+      flex:1; padding:0.65rem; border-radius:8px; font-size:0.8rem;
+      font-weight:600; letter-spacing:0.05em; text-transform:uppercase;
+      cursor:pointer; transition:all 0.25s ease; text-align:center;
+      text-decoration:none; display:inline-block; border:none;
+    }
+    .doc-btn-view  { background:linear-gradient(135deg, var(--gold), var(--gold-dark)); color:#fff; }
+    .doc-btn-view:hover  { opacity:0.88; transform:translateY(-1px); }
+    .doc-btn-dl { background:var(--surface); border:1px solid var(--border); color:var(--muted); }
+    .doc-btn-dl:hover { border-color:var(--gold); color:var(--gold); }
+
+    /* ═══════════════════════════════════════════
+     PDF VIEWER MODAL
+    ═══════════════════════════════════════════ */
+    .pdf-modal {
+      display:none; position:fixed; inset:0; z-index:2000;
+      background:rgba(0,0,0,0.95); backdrop-filter:blur(10px);
+      flex-direction:column;
+    }
+    .pdf-modal.open { display:flex; }
+    .pdf-modal-header {
+      padding:1rem 1.5rem; display:flex; align-items:center;
+      justify-content:space-between; border-bottom:1px solid var(--border);
+      background:var(--surface); flex-shrink:0;
+    }
+    .pdf-modal-title {
+      font-family:var(--font-display); font-size:1.1rem; font-weight:600;
+      color:var(--gold);
+    }
+    .pdf-modal-actions { display:flex; gap:0.8rem; align-items:center; }
+    .pdf-dl-btn {
+      padding:0.5rem 1.2rem; background:linear-gradient(135deg,var(--gold),var(--gold-dark));
+      border:none; border-radius:8px; color:#fff; font-size:0.8rem;
+      font-weight:600; cursor:pointer; text-decoration:none;
+      display:inline-flex; align-items:center; gap:0.4rem;
+    }
+    .pdf-close-btn {
+      width:36px; height:36px; background:var(--surface-2);
+      border:1px solid var(--border); border-radius:8px;
+      color:var(--text); font-size:1.2rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:all 0.2s; line-height:1;
+    }
+    .pdf-close-btn:hover { background:var(--gold-dark); border-color:var(--gold-dark); }
+    .pdf-frame-wrap {
+      flex:1; padding:1rem; overflow:auto;
+      display:flex; align-items:flex-start; justify-content:center;
+    }
+    .pdf-frame-wrap iframe {
+      width:100%; max-width:960px; height:100%;
+      min-height:calc(100vh - 80px);
+      border:none; border-radius:8px;
+      background:#fff;
+    }
+    /* Fallback message inside modal */
+    .pdf-fallback {
+      display:none; flex-direction:column; align-items:center;
+      justify-content:center; gap:1.5rem; text-align:center;
+      padding:3rem; color:var(--muted); width:100%;
+    }
+    .pdf-fallback.visible { display:flex; }
+    .pdf-fallback h3 { font-family:var(--font-display); font-size:1.5rem; color:var(--text); }
+    .pdf-fallback p { font-size:0.95rem; max-width:400px; line-height:1.7; }
 
         /* Testimonials */
         .testimonials {
@@ -609,7 +702,7 @@
             </div>
             <!..\\need an icon for photography\\...>
             <div class="service-card">
-              <div class="service-icon"> 📷 </div>
+            <div class="service-icon"> 📷 </div>
                 <h3>  C REO Photography</h3>
                 <p>Our focus is on telling your story
                     through the lens and creating permanent memories that you can look at for a lifetime.</p>
@@ -707,12 +800,12 @@
         <p class="section-subtitle">Don't just take our word for it</p>
         <div class="testimonial-slider">
             <div class="testimonial">
-                <p>"Nexus transformed our digital presence completely. Their strategic approach and creative execution resulted in a 400% increase in qualified leads. Best investment we've made!"</p>
+                <p>"C reo-Graphics transformed our digital presence completely. Their strategic approach and creative execution resulted in a 400% increase in qualified leads. Best investment we've made!"</p>
                 <div class="testimonial-author">Sarah </div>
-                <div class="testimonial-role">CEO, TechVision Inc.</div>
+                <div class="testimonial-role">CEO, .</div>
             </div>
         </div>
-    </section>
+    </section>>
 
     <!-- CTA Section -->
     <section class="cta-section" id="contact">
@@ -720,45 +813,10 @@
         <p>Let's create something extraordinary together. Schedule a free consultation today.</p>
         <button class="cta-button cta-white">Get Your Free Strategy Session</button>
     </section>
-
-    <!-- Footer -->
-    <footer>
-        <div class="footer-content">
-            <div class="footer-section">
-                <h3 class="logo">CREO Marketing Agency And Graphics </h3>
-                <p>Transforming brands through innovative digital marketing strategies.</p>
-                <div class="social-links">
-                    <a href="#">📘</a>
-                    <a href="#">🐦</a>
-                    <a href="#">📷</a>
-                    <a href="#">💼</a>
-                </div>
-            </div>
-            <div class="footer-section">
-                <h3>Services</h3>
-                <a href="#">Social Media Marketing</a>
-                <a href="#">SEO & Analytics</a>
-                <a href="#">Content Strategy</a>
-                <a href="#">PPC Advertising</a>
-            </div>
-            <div class="footer-section">
-                <h3>Company</h3>
-                <a href="#">About Us</a>
-                <a href="#">Careers</a>
-                <a href="#">Blog</a>
-                <a href="#">Contact</a>
-            </div>
-            <div class="footer-section">
-                <h3>Contact</h3>
-                <p>📧 </p>
-                <p>📞 +254 713 739 267</p>
-                <p>📍 Kiammbu ,KENYA</p>
-            </div>
-        </div>
-        <div class="copyright">
-            <p>&copy; 2025 C REO DIGITAL MARKETING AGENCY AND GRAPHICS.  All rights reserved.</p>
-        </div>
-    </footer>
+    
+    </div>         status.textContent = 'Error: ' + err.message;
+        
+    
 
     <script>
         // Navbar scroll effect
@@ -807,7 +865,7 @@
             observer.observe(el);
         });
     </script>
-    <section id="contact" class="services">
+    <footer id="contact" class="services">
         <div class="container">
             <h2 class="section-title">Get In <span class="gradient-text">Touch</span></h2>
             <p class="section-subtitle">Ready to start your next project?</p>
@@ -834,23 +892,61 @@
                 </form>
                 <p id="formStatus" style="margin-top: 1rem; text-align: center;"></p>
             </div>
-        </div>
-    </section>
-    
-    <footer>
-        <div class="footer-content">
-            <div class="footer-section">
-                <h3>Newsletter</h3>
-                <p>Subscribe for marketing insights.</p>
-                <form id="newsletterForm" style="margin-top: 1rem; display: flex; gap: 10px;">
-                    <input type="email" id="newsEmail" placeholder="Email Address" required style="padding: 10px; border-radius: 5px; border: 1px solid #2a2a2a; background: #1a1a1a; color: white;">
-                    <button type="submit" class="cta-button">Join</button>
-                </form>
-                <p id="newsStatus" style="font-size: 0.8rem; margin-top: 5px;"></p>
-            </div>
-        </div>
+        </div>    
     </footer>
-    
+    <p id="formStatus"></p>
+    <hr style="margin:50px 0;border:1px solid #2a2a2a;">
+
+<div class="footer-content">
+
+    <div class="footer-section">
+        <h3 class="logo">CREO Marketing Agency & Graphics</h3>
+
+        <p>
+            Transforming brands through innovative digital marketing,
+            branding, photography and creative solutions.
+        </p>
+
+        <div class="social-links">
+            <a href="#">📘</a>
+            <a href="#">📷</a>
+            <a href="#">💼</a>
+            <a href="#">▶️</a>
+        </div>
+    </div>
+
+    <div class="footer-section">
+        <h3>Services</h3>
+
+        <a href="#services">Social Media Marketing</a>
+        <a href="#services">Photography</a>
+        <a href="#services">Brand Development</a>
+        <a href="#services">SEO & Analytics</a>
+    </div>
+
+    <div class="footer-section">
+        <h3>Quick Links</h3>
+
+        <a href="#home">Home</a>
+        <a href="#portfolio">Portfolio</a>
+        <a href="#testimonials">Testimonials</a>
+        <a href="#contact">Contact</a>
+    </div>
+
+    <div class="footer-section">
+        <h3>Contact</h3>
+
+        <p>📞 +254 713 739 267</p>
+        <p>📍 Kiambu, Kenya</p>
+        <p>📧 info@creoagency.co.ke</p>
+    </div>
+
+</div>
+
+<div class="copyright">
+    © 2025 CREO Marketing Agency & Graphics.
+    All Rights Reserved.
+</div>
     <script>
         const API_URL = 'https://creo-project.onrender.com/api';
 
@@ -865,55 +961,33 @@ return response.json();
     
         // Contact Form Logic
         document.getElementById('contactForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const status = document.getElementById('formStatus');
-            status.textContent = 'Sending...';
-    
-            const formData = {
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                service: document.getElementById('service').value,
-                message: document.getElementById('message').value
-            };
-    
-            try {
-                const response = await fetch(`${API_URL}/contact`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    status.style.color = '#D4A017';
-                    status.textContent = data.message;
-                    e.target.reset();
-                } else {
-                    throw new Error(data.error);
-                }
-            } catch (err) {
-                status.style.color = 'red';
-                status.textContent = 'Error: ' + err.message;
-            }
+    e.preventDefault();
+    const status = document.getElementById('formStatus');
+    status.textContent = 'Sending...';
+
+    const formData = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        service: document.getElementById('service').value,
+        message: document.getElementById('message').value
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/contact`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
         });
-    
-        // Newsletter Logic
-        document.getElementById('newsletterForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const newsStatus = document.getElementById('newsStatus');
-            const email = document.getElementById('newsEmail').value;
-    
-            try {
-                const response = await fetch(`${API_URL}/newsletter/subscribe`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
-                });
-                const data = await response.json();
-                newsStatus.textContent = data.message || data.error;
-                if (response.ok) e.target.reset();
-            } catch (err) {
-                newsStatus.textContent = 'Subscription failed.';
-            }
-        });
-    </script></body>
-</html>
+        const data = await response.json();
+        if (response.ok) {
+            status.style.color = '#D4A017';
+            status.textContent = data.message;
+        } else {
+            status.style.color = 'red';
+            status.textContent = data.message || 'Something went wrong.';
+        }
+    } catch (error) {
+        status.style.color = 'red';
+        status.textContent = 'Network error – please try again.';
+    }
+});
